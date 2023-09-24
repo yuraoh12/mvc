@@ -1,29 +1,31 @@
 package Article.controller;
 
-import Article.model.Article;
-import Article.model.ArticleRepository;
-import Article.model.Reply;
-import Article.model.ReplyRepository;
+import Article.model.*;
 import Article.view.ArticleView;
 import util.Util;
 
-import java.util.ArrayList;
-import java.util.Scanner;
+import java.util.*;
 
 public class ArticleController {
 
-    ArticleView articleView = new ArticleView();
-    ArticleRepository articleRepository = new ArticleRepository();
-    ReplyRepository replyRepository = new ReplyRepository();
-    Scanner scan = new Scanner(System.in);
+    private ArticleView articleView = new ArticleView();
+    private ArticleRepository articleRepository = new ArticleRepository();
+    private ReplyRepository replyRepository = new ReplyRepository();
+    private MemberRepository memberRepository = new MemberRepository();
+    private LikeRepository likeRepository = new LikeRepository();
+    private Scanner scan = new Scanner(System.in);
+    private Member loginedMember = null;
 
     public void add() {
+
+        if(isNotLogin()) return;
+
         System.out.print("게시물 제목을 입력해주세요 : ");
         String title = scan.nextLine();
         System.out.print("게시물 내용을 입력해주세요 : ");
         String content = scan.nextLine();
 
-        articleRepository.insert(title, content);
+        articleRepository.insert(title, content, loginedMember.getId());
 
         System.out.println("게시물이 등록되었습니다.");
     }
@@ -76,6 +78,7 @@ public class ArticleController {
 
     public void detail() {
         // 중복 -> 함수
+        if(isNotLogin()) return;
 
         System.out.print("상세보기 할 게시물 번호를 입력해주세요 : ");
         int targetId = getParamInt(scan.nextLine(), -1);
@@ -89,28 +92,32 @@ public class ArticleController {
         } else {
             article.setHit(article.getHit() + 1);
             ArrayList<Reply> replies = replyRepository.getRepliesByArticleId(article.getId());
-            articleView.printArticleDetail(article, replies);
-            doDetailProcess(article);
+            Member member = memberRepository.getMemberById(article.getMemberId());
+            Like like = likeRepository.getLikeByArticleIdAndMemberId(article.getId(), loginedMember.getId());
+            int likeCount = likeRepository.getCountOfLikeByArticleId(article.getId());
+
+            articleView.printArticleDetail(article, member, replies, likeCount, like);
+            doDetailProcess(article, member, replies);
         }
     }
 
-    public void doDetailProcess(Article article) {
+    public void doDetailProcess(Article article, Member member, ArrayList<Reply> replies) {
         while(true) {
             System.out.print("상세보기 기능을 선택해주세요(1. 댓글 등록, 2. 추천, 3. 수정, 4. 삭제, 5. 목록으로) : ");
             int cmd = getParamInt(scan.nextLine(), -1);
 
             switch(cmd) {
                 case 1 :
-                    addReply(article);
+                    addReply(article, member);
                     break;
                 case 2 :
-                    System.out.println("추천");
+                    checkLike(article, member, replies);
                     break;
                 case 3 :
-                    System.out.println("수정");
+                    updateMyArticle(article, member, replies);
                     break;
                 case 4 :
-                    System.out.println("삭제");
+                    deleteMyArticle(article);
                     break;
                 case 5 :
                     System.out.println("목록으로 돌아갑니다.");
@@ -123,7 +130,57 @@ public class ArticleController {
         }
     }
 
-    public void addReply(Article article) {
+    private void checkLike(Article article, Member member, ArrayList<Reply> replies) {
+        // 하나의 게시물에 한명의 유저가 체크 가능 -> 어떤 게시물에 어떤 회원이 좋아요 체크 했는지 기억해야 한다.
+        // 좋아요 -> 어떤 게시물, 어떤 회원, 언제
+        // 좋아요 여러개 -> 1번 게시물에 1번 유저, 1번 게시물에 2번 유저, 1번 게시물에 3번 유저, 2번 게시물에 1번 유저 ....
+        if(isNotLogin()) return;
+
+        Like like = likeRepository.getLikeByArticleIdAndMemberId(article.getId(), loginedMember.getId());
+
+        if(like == null) {
+            likeRepository.insert(article.getId(), loginedMember.getId());
+            System.out.println("해당 게시물을 좋아합니다.");
+        } else {
+            likeRepository.delete(like);
+            System.out.println("해당 게시물의 좋아요를 해제합니다.");
+        }
+
+        int likeCount = likeRepository.getCountOfLikeByArticleId(article.getId());
+        like = likeRepository.getLikeByArticleIdAndMemberId(article.getId(), loginedMember.getId());
+        articleView.printArticleDetail(article, member, replies, likeCount, like);
+    }
+
+    private void deleteMyArticle(Article article) {
+        if(isNotLogin()) return;
+
+        System.out.print("정말 게시물을 삭제하시겠습니까? (y/n) : ");
+        String isAgree = scan.nextLine();
+        if(isAgree.equals("y")) {
+            articleRepository.delete(article);
+            System.out.printf("홍길동님의 %d번 게시물을 삭제했습니다.\n", article.getId());
+            list();
+        }
+    }
+
+    private void updateMyArticle(Article article, Member member, ArrayList<Reply> replies) {
+        if(isNotLogin()) return;
+
+        System.out.print("새로운 제목 : ");
+        String title = scan.nextLine();
+        System.out.print("새로운 내용 : ");
+        String body = scan.nextLine();
+
+        articleRepository.update(article.getId(), title, body);
+        Like like = likeRepository.getLikeByArticleIdAndMemberId(article.getId(), loginedMember.getId());
+        int likeCount = likeRepository.getCountOfLikeByArticleId(article.getId());
+        articleView.printArticleDetail(article, member, replies, likeCount, like);
+    }
+
+    public void addReply(Article article, Member member) {
+
+        if(isNotLogin()) return;
+
         System.out.print("댓글 내용 : ");
         String body = scan.nextLine();
         String regDate = Util.getCurrentDate();
@@ -133,7 +190,9 @@ public class ArticleController {
 
         System.out.println("댓글이 성공적으로 등록되었습니다.");
         ArrayList<Reply> replies = replyRepository.getRepliesByArticleId(article.getId());
-        articleView.printArticleDetail(article, replies);
+        Like like = likeRepository.getLikeByArticleIdAndMemberId(article.getId(), loginedMember.getId());
+        int likeCount = likeRepository.getCountOfLikeByArticleId(article.getId());
+        articleView.printArticleDetail(article, member, replies, likeCount, like);
     }
 
     public void search() {
@@ -143,7 +202,14 @@ public class ArticleController {
         articleView.printArticles(searchedArticles);
     }
 
+    public boolean isNotLogin() {
+        if(loginedMember == null) {
+            System.out.println("로그인을 해주세요.");
+            return true;
+        }
 
+        return false;
+    }
 
     public int getParamInt(String input, int defaulValue) {
 
@@ -157,4 +223,71 @@ public class ArticleController {
 
         return defaulValue;
     }
+
+    public Member getLoginedMember() {
+        return loginedMember;
+    }
+
+    public void setLoginedMember(Member loginedMember) {
+        this.loginedMember = loginedMember;
+    }
+
+    public void sort() {
+        System.out.print("정렬 대상을 선택해주세요. (1. 번호,  2. 조회수) : ");
+        int sortTarget = getParamInt(scan.nextLine(), -1);
+        System.out.print("정렬 방법을 선택해주세요. (1. 오름차순,  2. 내림차순) : ");
+        int sortType = getParamInt(scan.nextLine(), -1);
+        ArrayList<Article> allArticles = articleRepository.findAllArticles();
+
+        Collections.sort(allArticles, new SortFactory().getSort(sortTarget).setDirection(sortType));
+
+        articleView.printArticles(allArticles);
+    }
 }
+
+class Sort {
+    protected int order = 1;
+
+    Comparator<Article> setDirection(int direction) {
+        if(direction == 2) {
+            order = -1;
+        }
+
+        return (Comparator<Article>)this;
+    }
+}
+
+class SortFactory {
+
+    Map<Integer, Sort> sortMap = new HashMap<>();
+
+    SortFactory() {
+        sortMap.put(1, new SortById());
+        sortMap.put(2, new SortByHit());
+    }
+    public Sort getSort(int sortTarget) {
+        return sortMap.get(sortTarget);
+    }
+}
+
+class SortById extends Sort implements Comparator<Article> {
+
+    @Override
+    public int compare(Article o1, Article o2) {
+        if(o1.getId() > o2.getId()) {
+            return order;
+        }
+        return -1 * order;
+    }
+}
+
+class SortByHit extends Sort implements Comparator<Article> {
+    @Override
+    public int compare(Article o1, Article o2) {
+        if(o1.getHit() > o2.getHit()) {
+            return order;
+        }
+        return -1 * order;
+    }
+}
+

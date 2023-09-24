@@ -1,16 +1,24 @@
 package Article.view;
 
 import Article.model.Article;
+import Article.model.Like;
+import Article.model.Member;
 import Article.model.Reply;
 
 import java.util.ArrayList;
 
 public class ArticleView {
-    public void printArticleDetail(Article article, ArrayList<Reply> replies) {
+    public void printArticleDetail(Article article, Member member, ArrayList<Reply> replies, int likeCount, Like like) {
         System.out.println("===================");
         System.out.printf("번호 : %d\n", article.getId());
         System.out.printf("제목 : %s\n", article.getTitle());
         System.out.printf("내용 : %s\n", article.getContent());
+        System.out.printf("작성자 : %s\n", member.getNickname());
+        if(like == null) {
+            System.out.printf("좋아요 : ♡ %d\n", likeCount);
+        } else {
+            System.out.printf("좋아요 : ♥ %d\n", likeCount);
+        }
         System.out.printf("조회수 : %d\n", article.getHit());
         System.out.printf("등록일 : %s\n", article.getRegDate());
         System.out.println("===================");
@@ -37,6 +45,7 @@ public class ArticleView {
             System.out.printf("번호 : %d\n", article.getId());
             System.out.printf("제목 : %s\n", article.getTitle());
             System.out.printf("등록날짜 : %s\n", article.getRegDate());
+            System.out.printf("조회수 : %d\n", article.getHit());
 
             System.out.println("==================");
         }

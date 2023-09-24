@@ -13,6 +13,7 @@ public class BoardApp {
     public void start() {
         while (true) {
             Member loginedMember = memberController.getLoginedMember();
+            articleController.setLoginedMember(loginedMember);
             if (loginedMember == null) {
                 System.out.print("명령어: ");
             } else {
@@ -34,6 +35,8 @@ public class BoardApp {
                 articleController.detail();
             } else if (command.equals("search")) {
                 articleController.search();
+            } else if(command.equals("sort")) {
+                articleController.sort();
             } else if (command.equals("signup")) {
                 memberController.signup();
             } else if (command.equals("login")) {

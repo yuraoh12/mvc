@@ -9,16 +9,27 @@ public class Article {
     // 내용
     private String content;
 
+    private int memberId;
+
     // 조회수
     private int hit;
 
     private String regDate;
 
-    public Article(int id, String title, String content, String regDate) {
+    public Article(int id, String title, String content, int memberId, String regDate) {
         this.id = id;
         this.title = title;
         this.content = content;
+        this.memberId = memberId;
         this.regDate = regDate;
+    }
+
+    public int getMemberId() {
+        return memberId;
+    }
+
+    public void setMemberId(int memberId) {
+        this.memberId = memberId;
     }
 
     public String getTitle() {

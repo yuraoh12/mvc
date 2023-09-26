@@ -37,6 +37,8 @@ public class BoardApp {
                 articleController.search();
             } else if(command.equals("sort")) {
                 articleController.sort();
+            } else if(command.equals("page")) {
+                articleController.page();
             } else if (command.equals("signup")) {
                 memberController.signup();
             } else if (command.equals("login")) {

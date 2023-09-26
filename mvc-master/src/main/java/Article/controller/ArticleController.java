@@ -243,6 +243,15 @@ public class ArticleController {
 
         articleView.printArticles(allArticles);
     }
+
+    public void page() {
+        ArrayList<Article> articles =  articleRepository.findAllArticles();
+        articleView.printArticles(articles);
+
+        System.out.println("[1] 2 3 4 5");
+        System.out.print("페이징 명령어를 입력해주세요 ((1. 이전, 2. 다음, 3. 선택, 4. 뒤로가기): ");
+        int pageCmd = getParamInt(scan.nextLine(), -1);
+    }
 }
 
 class Sort {
